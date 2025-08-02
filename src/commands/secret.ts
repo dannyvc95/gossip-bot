@@ -1,17 +1,6 @@
 import { ActionRowBuilder, bold, ButtonBuilder, userMention } from '@discordjs/builders';
 import { ButtonStyle, ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
-import { secretMessages } from '../index';
-import fs from 'fs';
-import path from 'path';
-
-const filePath = path.join(__dirname, 'db.json');
-
-export type SecretMessage = {
-    from: string;
-    to: string;
-    created: Date;
-    message: string;
-};
+import { insertSecretMessage } from '../database';
 
 export const secretCommand = new SlashCommandBuilder()
     .setName('secret')
@@ -25,49 +14,34 @@ export const secretCommand = new SlashCommandBuilder()
 
 export async function executeSecretCommand(interaction: ChatInputCommandInteraction) {
     try {
+        // Get command input values.
         const user = interaction.options.getUser('user');
         const message = interaction.options.getString('message');
 
         if (user && message) {
-            const secretMessage: SecretMessage = {
-                from: interaction.user.id,
-                to: user.id,
-                created: new Date(),
-                message: message,
-            };
-            
-            // Save the message in memory.
-            secretMessages[interaction.id] = secretMessage;
+            // Save the secret message in the database.
+            insertSecretMessage({
+                id: interaction.id,
+                author: interaction.user.id,
+                recipient: user.id,
+                timestamp: new Date(),
+                content: message,
+            });
 
-            // Backup the message to restore on bot restart
-            let temporal: Record<string, SecretMessage> = {};
-            try {
-                const fileContent = fs.readFileSync(filePath, 'utf-8');
-                temporal = JSON.parse(fileContent);
-                temporal[interaction.id] = secretMessage;
-                fs.writeFileSync(filePath, JSON.stringify(temporal, null, 2));
-            } catch (error) {
-                console.error(error);
-            }
-
-            const button = new ButtonBuilder()
-                .setCustomId(interaction.id)
-                .setLabel('🔒 Revelar mensaje')
-                .setStyle(ButtonStyle.Primary);
-
-            const row = new ActionRowBuilder<ButtonBuilder>()
-                .addComponents(button);
-
-            await interaction.reply({
+            return await interaction.reply({
                 content: `✉️ ${bold(interaction.user.displayName)} envió un mensaje secreto a ${userMention(user.id)}`,
-                components: [row],
+                components: [
+                    new ActionRowBuilder<ButtonBuilder>()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId(interaction.id)
+                                .setLabel('🔒 Revelar mensaje')
+                                .setStyle(ButtonStyle.Primary)
+                        )
+                ],
             });
         }
     } catch (error) {
         console.error(error);
     }
-}
-
-export async function handleSecretCommandInteraction() {
-
 }
