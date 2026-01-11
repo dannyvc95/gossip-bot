@@ -136,6 +136,7 @@ export async function executeMoodCommand(interaction: ChatInputCommandInteractio
             components: [
                 new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(moodSelect)
             ],
+            ephemeral: true,
         });
     } catch (error) {
         console.error(error);
