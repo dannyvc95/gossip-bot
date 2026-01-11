@@ -1,6 +1,6 @@
-import { ActionRowBuilder, bold, ButtonBuilder, userMention } from '@discordjs/builders';
-import { ButtonStyle, ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
-import { insertSecretMessage } from '../database';
+import { ActionRowBuilder, bold, ButtonBuilder, spoiler, userMention } from '@discordjs/builders';
+import { ButtonInteraction, ButtonStyle, CacheType, ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import { insertSecretMessage, readSecretMessageById } from '../database';
 
 export const secretCommand = new SlashCommandBuilder()
     .setName('secret')
@@ -34,7 +34,7 @@ export async function executeSecretCommand(interaction: ChatInputCommandInteract
                     new ActionRowBuilder<ButtonBuilder>()
                         .addComponents(
                             new ButtonBuilder()
-                                .setCustomId(interaction.id)
+                                .setCustomId(`secret_message_${interaction.id}`)
                                 .setLabel('🔒 Revelar mensaje')
                                 .setStyle(ButtonStyle.Primary)
                         )
@@ -44,4 +44,20 @@ export async function executeSecretCommand(interaction: ChatInputCommandInteract
     } catch (error) {
         console.error(error);
     }
+}
+
+export async function handleSecretMessageButton(interactionCreate: ButtonInteraction<CacheType>) {
+    const secretMessage = readSecretMessageById(interactionCreate.customId.replace('secret_message_', ''));
+
+    if (secretMessage && (secretMessage.recipient === interactionCreate.user.id || secretMessage.author === interactionCreate.user.id)) {
+        return await interactionCreate.reply({
+            content: `🔓 Mensaje secreto: ${spoiler(secretMessage.content ?? '🙁 Ups... este mensaje expiró.')}`,
+            ephemeral: true,
+        });
+    }
+
+    return await interactionCreate.reply({
+        content: `🔓 Mensaje secreto: ${spoiler('🚫 Ninguno, el mensaje no es para ti no seas chismoso(a).')}`,
+        ephemeral: true,
+    });
 }

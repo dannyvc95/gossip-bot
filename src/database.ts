@@ -3,7 +3,7 @@ import { SecretMessage } from './types';
 
 const db = new Database('database.db', { verbose: console.log });
 
-export function init() {
+export function initDatabase() {
     db.prepare(`
         CREATE TABLE IF NOT EXISTS secret_messages (
             id TEXT PRIMARY KEY,
